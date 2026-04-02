@@ -1,6 +1,6 @@
 # ATS Resume Scorer
 
-A full-stack web application for analyzing resumes against Applicant Tracking Systems (ATS).
+A full-stack web application designed to analyze resumes and evaluate their compatibility with Applicant Tracking Systems (ATS), providing insights and recommendations to improve job matching.
 
 ## Tech Stack
 
