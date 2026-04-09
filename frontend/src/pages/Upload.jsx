@@ -1,10 +1,15 @@
-import React, { useState, useRef } from 'react';
-import { Upload as UploadIcon, FileText, X } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { Upload, AlertCircle, Loader } from 'lucide-react';
 
-const Upload = () => {
-  const [file, setFile] = useState(null);
+export default function UploadPage() {
+  const navigate = useNavigate();
+  const [resume, setResume] = useState(null);
+  const [jobDescription, setJobDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
-  const inputRef = useRef(null);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -20,125 +25,216 @@ const Upload = () => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+
+    const files = e.dataTransfer?.files;
+    if (files && files[0]) {
+      const file = files[0];
+      if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setResume(file);
+        setError('');
+      } else {
+        setError('Only PDF and DOCX files are allowed');
+      }
     }
   };
 
-  const handleChange = (e) => {
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setResume(file);
+        setError('');
+      } else {
+        setError('Only PDF and DOCX files are allowed');
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
-    }
-  };
+    setError('');
 
-  const handleFile = (selectedFile) => {
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (!allowedTypes.includes(selectedFile.type)) {
-      alert('Please upload a PDF or DOCX file');
+    if (!resume) {
+      setError('Please select a resume file');
       return;
     }
-    setFile(selectedFile);
-  };
 
-  const removeFile = () => {
-    setFile(null);
-    if (inputRef.current) {
-      inputRef.current.value = '';
-    }
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!file) {
-      alert('Please select a file first');
+    if (!jobDescription.trim()) {
+      setError('Please enter a job description');
       return;
     }
-    // For now, just show an alert. ML processing will be added later.
-    alert(`File "${file.name}" uploaded successfully! ML processing will be implemented soon.`);
+
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('resume', resume);
+      formData.append('job_description', jobDescription);
+
+      const response = await axios.post('/api/analyze/resume', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Navigate to results page with data
+      navigate('/results', { state: { analysisData: response.data } });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to analyze resume. Please try again.');
+      console.error('Analysis error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="container mx-auto px-4 py-16">
-      <div className="max-w-2xl mx-auto">
-        <div className="card">
-          <h1 className="text-3xl font-bold text-white text-center mb-8">Upload Your Resume</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+      {/* Background decoration */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+      </div>
 
-          <form onSubmit={handleSubmit} onDragEnter={handleDrag}>
-            <div
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
-                dragActive
-                  ? 'border-blue-400 bg-blue-500/10'
-                  : 'border-white/30 hover:border-white/50'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".pdf,.docx"
-                onChange={handleChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
+      <div className="relative z-10 max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            ATS Resume Analyzer
+          </h1>
+          <p className="text-xl text-gray-600">
+            Upload your resume and job description to get instant matching analysis
+          </p>
+        </div>
 
-              {file ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-center space-x-3">
-                    <FileText className="h-12 w-12 text-blue-400" />
-                    <div className="text-left">
-                      <p className="text-white font-medium">{file.name}</p>
-                      <p className="text-gray-300 text-sm">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={removeFile}
-                      className="text-red-400 hover:text-red-300 transition duration-200"
-                    >
-                      <X className="h-6 w-6" />
-                    </button>
+        {/* Main Card */}
+        <div className="backdrop-blur-2xl bg-white/80 rounded-3xl shadow-2xl p-8 md:p-12 border border-white/20">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Error Alert */}
+            {error && (
+              <div className="flex gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 animate-slideIn">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            {/* Resume Upload Section */}
+            <div className="space-y-4">
+              <label className="text-lg font-semibold text-gray-800">Resume Upload</label>
+
+              <div
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer group ${
+                  dragActive
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-300 hover:border-indigo-400 hover:bg-indigo-50/50'
+                }`}
+              >
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="resume-input"
+                  disabled={loading}
+                />
+
+                <label htmlFor="resume-input" className="flex flex-col items-center gap-3 cursor-pointer">
+                  <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full group-hover:scale-110 transition-transform">
+                    <Upload className="w-8 h-8 text-indigo-600" />
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <UploadIcon className="h-16 w-16 text-gray-400 mx-auto" />
                   <div>
-                    <p className="text-white text-lg font-medium mb-2">
-                      Drag and drop your resume here
+                    <p className="text-lg font-semibold text-gray-800">
+                      {resume ? resume.name : 'Drop your resume here'}
                     </p>
-                    <p className="text-gray-300 mb-4">
-                      or click to browse files
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      Supports PDF and DOCX files (max 10MB)
-                    </p>
+                    <p className="text-sm text-gray-600">or click to browse (PDF, DOCX)</p>
                   </div>
+                </label>
+
+                {resume && (
+                  <button
+                    type="button"
+                    onClick={() => setResume(null)}
+                    className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition-colors"
+                    disabled={loading}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {resume && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700">
+                  <span className="text-lg">✓</span>
+                  <span className="font-medium">{resume.name} selected</span>
                 </div>
               )}
             </div>
 
-            <button
-              type="submit"
-              className="btn-primary w-full mt-6 text-lg py-3"
-              disabled={!file}
-            >
-              Analyze Resume
-            </button>
-          </form>
+            {/* Job Description Section */}
+            <div className="space-y-4">
+              <label htmlFor="jobDesc" className="text-lg font-semibold text-gray-800">
+                Job Description
+              </label>
+              <textarea
+                id="jobDesc"
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Paste the job description here. Include key requirements, skills, and qualifications..."
+                rows={8}
+                disabled={loading}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:bg-white focus:outline-none transition-all text-gray-700 placeholder-gray-400 disabled:opacity-50"
+              />
+              <p className="text-sm text-gray-500">
+                {jobDescription.length} characters
+              </p>
+            </div>
 
-          <div className="mt-8 text-center">
-            <p className="text-gray-300 text-sm">
-              Your resume will be analyzed for ATS compatibility, keyword optimization, and formatting best practices.
-            </p>
-          </div>
+            {/* Submit Button */}
+            <div className="flex gap-4">
+              <button
+                type="submit"
+                disabled={loading || !resume || !jobDescription.trim()}
+                className={`flex-1 py-4 px-8 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+                  loading || !resume || !jobDescription.trim()
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl active:scale-95'
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <span>Analyze Resume</span>
+                    <span className="text-xl">→</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Info Section */}
+            <div className="grid md:grid-cols-3 gap-4 pt-8 border-t border-gray-200">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-indigo-600 mb-2">50+</div>
+                <p className="text-sm text-gray-600">Skills Recognized</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-indigo-600 mb-2">AI-Powered</div>
+                <p className="text-sm text-gray-600">TF-IDF Analysis</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-indigo-600 mb-2">Instant</div>
+                <p className="text-sm text-gray-600">Results</p>
+              </div>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   );
-};
-
-export default Upload;
+}

@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Upload from './pages/Upload';
+import Results from './pages/Results';
 
 function App() {
   const { user, loading } = useAuth();
@@ -26,6 +27,7 @@ function App() {
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
         <Route path="/upload" element={user ? <Upload /> : <Navigate to="/login" />} />
+        <Route path="/results" element={user ? <Results /> : <Navigate to="/login" />} />
       </Routes>
     </div>
   );

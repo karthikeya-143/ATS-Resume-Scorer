@@ -27,6 +27,7 @@ connectDB();
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/analyze', require('./routes/analyze'));
 
 const PORT = process.env.PORT || 5000;
 
