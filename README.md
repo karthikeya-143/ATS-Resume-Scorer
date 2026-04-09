@@ -66,7 +66,7 @@ ats-resume-scorer/
 ```
 
 ## Setup Instructions
-
+- the Machine Learning Part is Under Process
 ### Prerequisites
 - Node.js (v16 or higher)
 - MongoDB Atlas account or local MongoDB instance
